@@ -1,48 +1,36 @@
 from unittest.mock import patch
 import pytest
-from aadjwt._discovery import OpenIdDiscovery
+from azjwt import OpenIdDiscovery, tenant_metadata_endpoint
+
+class TestTenantMetadataEndpointFunction:
+    def test_should_return_metadata_endpoint_for_teannt(self):
+        expected = "https://login.microsoftonline.com/<tenant-id>/v2.0/.well-known/openid-configuration"
+        assert tenant_metadata_endpoint("<tenant-id>") == expected
 
 
 class TestOpenIdDiscovery:
-    def test_should_set_tenantId_when_created(
+    def test_should_set_metadata_endpoint_when_created(
         self,
         openid_discovery: OpenIdDiscovery,
-        tenant_id: str,
-    ):
-        assert openid_discovery.tenant_id == tenant_id
-
-    def test_should_make_metadata_endpoint(
-        self,
-        # Given
-        openid_discovery: OpenIdDiscovery,
-        tenant_id: str,
-        metadata_endpoint_template: str,
         metadata_endpoint: str,
     ):
-        # When
-        openid_discovery.make_metadata_endpoint()
-        # Then
-        metadata_endpoint_template.format.assert_called_once_with(TENANT_ID=tenant_id)
         assert openid_discovery.metadata_endpoint == metadata_endpoint
 
     def test_should_discover_configuration(
         self,
         # Given
         openid_discovery: OpenIdDiscovery,
-        make_metadata_endpoint_mock: str,
         openid_configuration: dict,
     ):
         # When
         config = openid_discovery.get_configuration()
         # Then
-        make_metadata_endpoint_mock.assert_called_once_with()
         assert config == openid_configuration
 
     def test_should_raise_RetrieveError_when_fetch_fails(
         self,
         # Given
         openid_discovery: OpenIdDiscovery,
-        make_metadata_endpoint_mock: str,
         fetch_openid_configuration_returns_400,
     ):
         # When / Then
@@ -73,19 +61,41 @@ class TestOpenIdDiscovery:
         with pytest.raises(OpenIdDiscovery.RetrieveError, match=""):
             openid_discovery.get_keys()
 
+    def test_should_get_a_key(
+        self,
+        # Given
+        openid_discovery: OpenIdDiscovery,
+        get_keys_mock: str,
+        known_key: dict,
+    ):
+        # When
+        actual_key = openid_discovery.get_key(known_key["kid"])
+        # Then
+        get_keys_mock.assert_called_once_with()
+        assert actual_key == known_key
+
+    def test_should_raise_UnknownKeyError_trying_to_get_unknown_key(
+        self,
+        # Given
+        openid_discovery: OpenIdDiscovery,
+        get_keys_mock: str,
+        unknown_key: dict,
+    ):
+        # When / Then
+        with pytest.raises(OpenIdDiscovery.UnknownKeyError, match=unknown_key["kid"]):
+            openid_discovery.get_key(unknown_key["kid"])
+
 
 @pytest.fixture(name="openid_discovery")
-def given_openid_discovery(tenant_id) -> OpenIdDiscovery:
-    return OpenIdDiscovery(tenant_id)
+def given_openid_discovery(metadata_endpoint) -> OpenIdDiscovery:
+    return OpenIdDiscovery(metadata_endpoint)
 
-
-@pytest.fixture(name="tenant_id")
-def given_tenant_id():
-    return "some-tenant-id"
 
 
 @pytest.fixture(name="openid_configuration")
-def mock_openid_configuration(requests_mocker, metadata_endpoint):
+def mock_openid_configuration(
+    requests_mocker: str, metadata_endpoint: str
+):
     config = {
         "jwks_uri": "actual-jwks-url",
         "issuer": "actual-issuer",
@@ -99,26 +109,10 @@ def given_fetch_openid_configuration_returns_400(requests_mocker, metadata_endpo
     requests_mocker.get(metadata_endpoint, status_code=400)
 
 
-@pytest.fixture(name="metadata_endpoint_template")
-def mock_metadata_endpoint_template(openid_discovery, metadata_endpoint):
-    with patch.object(openid_discovery, "metadata_endpoint_template") as template:
-        template.format.return_value = metadata_endpoint
-        yield template
-
-
 @pytest.fixture(name="metadata_endpoint")
-def mock_metadata_endpoint() -> str:
-    return "https://endpoint-url"
-
-
-@pytest.fixture(name="make_metadata_endpoint_mock")
-def mock_make_metadata_endpoint(
-    openid_discovery,
-    metadata_endpoint,
-):
-    with patch.object(openid_discovery, "make_metadata_endpoint") as func_mock:
-        func_mock.return_value = metadata_endpoint
-        yield func_mock
+def given_metadata_endpoint() -> str:
+    url = "https://endpoint-url"
+    return url
 
 
 @pytest.fixture(name="get_configuration_mock")
@@ -143,3 +137,20 @@ def mock_keys(requests_mocker):
 @pytest.fixture(name="fetch_keys_returns_400")
 def given_fetch_keys_returns_400(requests_mocker):
     requests_mocker.get("https://jwks_uri", status_code=400)
+
+
+@pytest.fixture(name="known_key")
+def given_known_key():
+    return {"kid": "known-key-id"}
+
+
+@pytest.fixture(name="unknown_key")
+def given_unknown_key():
+    return {"kid": "unknown-key-id"}
+
+
+@pytest.fixture(name="get_keys_mock")
+def given_get_keys_mock(openid_discovery, known_key):
+    with patch.object(openid_discovery, "get_keys") as func_mock:
+        func_mock.return_value = {"keys": [known_key]}
+        yield func_mock
