@@ -4,7 +4,8 @@ from unittest.mock import patch
 import pytest
 from rest_framework.exceptions import AuthenticationFailed
 
-from azjwt.django.rest_framework import BearerAuthentication
+from azjwt.django import _rest_framework
+from azjwt.django._rest_framework import BearerAuthentication
 
 
 class TestBearerAuthentication:
@@ -42,7 +43,7 @@ class TestBearerAuthentication:
 
 @pytest.fixture(name="django_authenticate_patch")
 def given_authenticate_patch():
-    with patch("azjwt.django.rest_framework.authenticate") as func_patch:
+    with patch.object(_rest_framework, "authenticate") as func_patch:
         yield func_patch
 
 
