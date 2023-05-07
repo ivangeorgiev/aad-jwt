@@ -1,25 +1,41 @@
 from typing import Any
 
 import jwt
+from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.http.request import HttpRequest
 
+from . import _conf as conf
 
 class UserClaims:
+    username: str
+
     @classmethod
     def from_dict(cls, claims: dict):
         pass
 
 
 class JwtUsers:
+
+    @property
+    def create_missing(self) -> bool:
+        return conf.MISSING_USER_ACTION == conf.MissingUserAction.CREATE
+
     @classmethod
     def get_instance(cls) -> "JwtUsers":
-        pass
+        return JwtUsers()
 
-    def get_for_claims(self, claims: UserClaims) -> AbstractBaseUser:
-        pass
+    def get_for_claims(self, claims: UserClaims) -> AbstractBaseUser | None:
+        model = get_user_model()
+        try:
+            user = model.objects.get(username=claims.username)
+        except model.DoesNotExist:
+            user = self.create_for_claims(claims) if self.create_missing else None
+        return user
 
+    def create_for_claims(self, claims) -> AbstractBaseUser:
+        pass
 
 class JwtDecoder:
     @classmethod

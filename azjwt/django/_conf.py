@@ -1,6 +1,10 @@
+from enum import Enum
 from django.conf import settings
 
-AZJWT = getattr(settings, 'AZJWT', {})
-REST_FRAMEWORK = getattr(AZJWT, 'REST_FRAMEWORK', {})
+class MissingUserAction(Enum):
+    IGNORE = 'Ignore'
+    CREATE = 'Create'
 
-REST_FRAMEWORK.setdefault('REALM', 'None')
+AZJWT = getattr(settings, 'AZJWT', {})
+
+MISSING_USER_ACTION = getattr(AZJWT, 'MISSING_USER_ACTION', MissingUserAction.IGNORE)
