@@ -66,7 +66,7 @@ In case the authentication fails, e.g. invalid username/password combination, `a
 In case of successfull authentication, `authenticate` method returns a tuple. The first element of the tuple is a User model instance of the authenticated user. The second element of the tuple is `auth` which is typically used in more complex authentication flows.
 
 Custom authentication scheme could also implement the `authenticate_header` method. Thiss method returns a string to be used as the value of the `WWW-Authenticate`
-header in a `401 Unauthenticated` response, or `None` (default implementation) if the authentication scheme should return `403 Permission Denied` responses.
+header in a `401 Unauthenticated` response, or `None` (default implementation) if the authentication scheme should return `403 Permission Denied` responses. See [WWW-Authenticate header documentation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/WWW-Authenticate).
 
 
 To reister our custom authenticatio scheme with all views, add it to the `DEFAULT_AUTHENTICATION_CLASSES` in Django's `settings.py`.
